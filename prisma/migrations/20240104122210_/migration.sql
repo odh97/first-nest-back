@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "Expert" ALTER COLUMN "icon" DROP DEFAULT,
+ALTER COLUMN "description" DROP DEFAULT;

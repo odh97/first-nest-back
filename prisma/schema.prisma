@@ -1,0 +1,437 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Accounts {
+  id                String    @id @default(cuid())
+  userId            String
+  type              AuthType  @default(LOCAL)
+  provider          Provider  @default(EMAIL)
+  providerAccountId String?   @default("")
+  expiredAt         DateTime?
+  password          String?   @default("")
+  createAt          DateTime  @default(now())
+  user              Users     @relation(fields: [userId], references: [id])
+}
+
+model Users {
+  id                    String                  @id @default(cuid())
+  email                 String?                 @unique
+  name                  String?
+  phone                 String?                 @unique
+  isExpert              Boolean                 @default(false)
+  isDelete              Boolean                 @default(false)
+  updateAt              DateTime                @default(now())
+  createAt              DateTime                @default(now())
+  deleteAt              DateTime?
+  icon                  String?
+  Accounts              Accounts[]
+  ScamCasePost          ScamCasePost[]
+  ScamCaseUserComment   ScamCaseUserComment[]
+  ScamDictionaryComment ScamDictionaryComment[]
+  TestResult            TestResult[]
+  UserAccessTokens      UserAccessTokens[]
+  UserChatHistory       UserChatHistory[]
+  UserChatList          UserChatList[]
+  UserReporting         UserReporting[]
+  ExpertReview          ExpertReview[]
+}
+
+model UserAccessTokens {
+  index    Int      @id @default(autoincrement())
+  userId   String
+  platform String
+  access   String
+  refresh  String
+  updateAt DateTime @default(now())
+  user     Users    @relation(fields: [userId], references: [id])
+
+  @@unique([userId, platform])
+}
+
+model AuthCode {
+  index    Int          @id @default(autoincrement())
+  type     AuthCodeType
+  code     String
+  createAt DateTime     @default(now())
+  updateAt DateTime     @default(now())
+  key      String
+}
+
+model UserChatList {
+  index           Int               @id @default(autoincrement())
+  id              String            @unique @default(uuid())
+  userId          String
+  expertId        String
+  requestId       String?
+  isActive        Boolean           @default(true)
+  createAt        DateTime          @default(now())
+  updateAt        DateTime          @default(now())
+  UserChatHistory UserChatHistory[]
+  expert          Expert            @relation(fields: [expertId], references: [id])
+  request         UserRequests?     @relation(fields: [requestId], references: [id])
+  user            Users             @relation(fields: [userId], references: [id])
+}
+
+model UserRequests {
+  index        Int            @id @default(autoincrement())
+  id           String         @unique @default(cuid())
+  chatId       String
+  expertId     String
+  content      String
+  requestPrice Int
+  confirmPrice Int
+  state        RequestState   @default(REQUESTED)
+  endDate      DateTime?
+  isActive     Boolean        @default(true)
+  createAt     DateTime       @default(now())
+  updateAt     DateTime       @default(now())
+  UserChatList UserChatList[]
+  expert       Expert         @relation(fields: [expertId], references: [id])
+}
+
+model UserChatHistory {
+  index    Int          @id @default(autoincrement())
+  chatId   String
+  senderId String
+  msgType  MsgType
+  content  String
+  createAt DateTime     @default(now())
+  updateAt DateTime     @default(now())
+  chat     UserChatList @relation(fields: [chatId], references: [id])
+  sender   Users        @relation(fields: [senderId], references: [id])
+}
+
+model TestResult {
+  index      Int      @id @default(autoincrement())
+  id         String   @unique @default(cuid())
+  userId     String
+  TestType   TestType
+  sheetId    String
+  sheetInput Json
+  result     String
+  createAt   DateTime @default(now())
+  updateAt   DateTime @default(now())
+  user       Users    @relation(fields: [userId], references: [id])
+}
+
+model UserReporting {
+  index      Int        @id @default(autoincrement())
+  userId     String
+  ReportType ReportType
+  innerId    String
+  msg        String
+  createAt   DateTime   @default(now())
+  user       Users      @relation(fields: [userId], references: [id])
+}
+
+model ScamNews {
+  index           Int               @id @default(autoincrement())
+  id              String            @unique @default(uuid())
+  media           String
+  title           String
+  summary         String
+  img             String?
+  link            String
+  isActive        Boolean           @default(true)
+  createAt        DateTime          @default(now())
+  updateAt        DateTime          @default(now())
+  publishAt       DateTime
+  ScamNewsViewCnt ScamNewsViewCnt[]
+}
+
+model ScamNewsViewCnt {
+  index    Int      @id @default(autoincrement())
+  newsId   String
+  viewCnt  Int
+  startAt  DateTime
+  endAt    DateTime
+  createAt DateTime @default(now())
+  news     ScamNews @relation(fields: [newsId], references: [id])
+}
+
+model ScamCategory {
+  index          Int              @id @default(autoincrement())
+  group          String
+  title          String           @unique
+  createAt       DateTime         @default(now())
+  ScamCasePost   ScamCasePost[]
+  ScamDictionary ScamDictionary[]
+}
+
+model ScamCasePost {
+  index               Int      @id @default(autoincrement())
+  id                  String   @unique @default(cuid())
+  userId              String
+  categoryId          Int
+  title               String
+  summary             String
+  content             Json
+  bestExpertCommentId String?
+  viewCnt             Int      @default(0)
+  tag                 String[]
+  isActive            Boolean  @default(true)
+  createAt            DateTime @default(now())
+  updateAt            DateTime @default(now())
+
+  BestExpertComment     ScamCaseExpertComment?  @relation("bestExpertComment", fields: [bestExpertCommentId], references: [id])
+  ScamCaseExpertComment ScamCaseExpertComment[] @relation("scamCaseExpertComment")
+  category              ScamCategory            @relation(fields: [categoryId], references: [index])
+  user                  Users                   @relation(fields: [userId], references: [id])
+  ScamCaseUserComment   ScamCaseUserComment[]
+}
+
+model ScamCaseUserComment {
+  index        Int          @id @default(autoincrement())
+  scamPostId   String
+  userId       String
+  comment      String
+  isActive     Boolean      @default(true)
+  createAt     DateTime     @default(now())
+  scamCasePost ScamCasePost @relation(fields: [scamPostId], references: [id])
+  user         Users        @relation(fields: [userId], references: [id])
+}
+
+model ScamCaseExpertComment {
+  index        Int            @id @default(autoincrement())
+  id           String         @unique @default(cuid())
+  scamPostId   String
+  comment      String
+  isActive     Boolean        @default(true)
+  createAt     DateTime       @default(now())
+  updateAt     DateTime       @default(now())
+  expertId     String
+  expert       Expert         @relation(fields: [expertId], references: [id])
+  scamCasePost ScamCasePost   @relation("scamCaseExpertComment", fields: [scamPostId], references: [id])
+  ScamCasePost ScamCasePost[] @relation("bestExpertComment")
+}
+
+model ScamCaseTag {
+  index    Int      @id @default(autoincrement())
+  tag      String   @unique
+  isActive Boolean  @default(true)
+  createAt DateTime @default(now())
+}
+
+model ScamDictionary {
+  index                 Int                     @id @default(autoincrement())
+  id                    String                  @unique @default(cuid())
+  categoryId            Int
+  cardImage             String?
+  headerImg             String?
+  title                 String
+  author                String
+  expertId              String?
+  content               Json
+  nextDictionaryId      String?
+  isPremium             Boolean                 @default(false)
+  isActive              Boolean                 @default(true)
+  createAt              DateTime                @default(now())
+  updateAt              DateTime                @default(now())
+  category              ScamCategory            @relation(fields: [categoryId], references: [index])
+  expert                Expert?                 @relation(fields: [expertId], references: [id])
+  ScamDictionaryComment ScamDictionaryComment[]
+  ScamDictionaryViewCnt ScamDictionaryViewCnt[]
+}
+
+model ScamDictionaryComment {
+  index        Int            @id @default(autoincrement())
+  id           String         @unique @default(cuid())
+  dictionaryId String
+  userId       String
+  comment      String
+  isActive     Boolean        @default(true)
+  createAt     DateTime       @default(now())
+  updateAt     DateTime       @default(now())
+  dictionary   ScamDictionary @relation(fields: [dictionaryId], references: [id])
+  user         Users          @relation(fields: [userId], references: [id])
+}
+
+model ScamDictionaryViewCnt {
+  index        Int            @id @default(autoincrement())
+  dictionaryId String
+  viewCnt      Int
+  startAt      DateTime
+  endAt        DateTime
+  createAt     DateTime       @default(now())
+  dictionary   ScamDictionary @relation(fields: [dictionaryId], references: [id])
+}
+
+model Expert {
+  index       Int      @id @default(autoincrement())
+  id          String   @unique @default(cuid())
+  name        String
+  company     String   @default("기본사무소")
+  icon        String?
+  description String?
+  headerImg   String?
+  bio         String?
+  service     String[]
+  badge       String[]
+  requestCnt  Int      @default(0)
+  starCnt     Int      @default(0)
+  totalCareer Int      @default(0)
+  isActive    Boolean  @default(true)
+  createAt    DateTime @default(now())
+  updateAt    DateTime @default(now())
+
+  ExpertCapacity ExpertCapacity[]
+  ExpertCareer   ExpertCareer[]
+  ExpertOffice   ExpertOffice[]
+
+  ExpertReview ExpertReview[]
+
+  ScamCaseExpertComment ScamCaseExpertComment[]
+  ScamDictionary        ScamDictionary[]
+  UserChatList          UserChatList[]
+  UserRequests          UserRequests[]
+}
+
+model ExpertCapacity {
+  index       Int      @id @default(autoincrement())
+  expertId    String
+  title       String
+  description String
+  img         String
+  issueDate   DateTime
+  createAt    DateTime @default(now())
+  expert      Expert   @relation(fields: [expertId], references: [id])
+}
+
+model ExpertCareer {
+  index        Int      @id @default(autoincrement())
+  expertId     String
+  organization String
+  work         String
+  startAt      DateTime
+  endAt        DateTime
+  createAt     DateTime @default(now())
+  expert       Expert   @relation(fields: [expertId], references: [id])
+}
+
+model ExpertReview {
+  index    Int    @id @default(autoincrement())
+  expertId String
+
+  userId    String
+  starCnt   Int    @default(5)
+  requestId String
+  comment   String
+
+  isActive Boolean  @default(true)
+  createAt DateTime @default(now())
+
+  expert Expert @relation(fields: [expertId], references: [id])
+  users  Users? @relation(fields: [userId], references: [id])
+}
+
+model ExpertOffice {
+  index       Int      @id @default(autoincrement())
+  expertId    String
+  title       String
+  description String
+  latitude    Float
+  longitude   Float
+  updateAt    DateTime @default(now())
+  createAt    DateTime @default(now())
+
+  expert Expert @relation(fields: [expertId], references: [id])
+}
+
+model Posts {
+  id          String   @id @default(cuid())
+  title       String
+  firstImg    String?
+  description String?
+  category    String
+  content     Json
+  createAt    DateTime @default(now())
+  updateAt    DateTime @default(now())
+  isdelete    Boolean  @default(false)
+  author      String?
+}
+
+model CrawlingStateChecker {
+  index       Int           @id @default(autoincrement())
+  origin      String
+  path        String
+  url         String        @unique
+  description String?
+  createAt    DateTime      @default(now())
+  category    String
+  state       CrawlingState @default(READY)
+}
+
+model CrawlingData {
+  index       Int      @id @default(autoincrement())
+  info        String?
+  siteName    String?
+  category    String?
+  title       String?
+  gptTitle    String?
+  question    String?
+  qptQuestion String?
+  answer      String?
+  qptAnswer   String?
+  tags        String[]
+  link        String?
+  createAt    DateTime @default(now())
+}
+
+enum CrawlingState {
+  READY
+  SUCCESS
+  FAIL
+}
+
+enum AuthType {
+  LOCAL
+  OAUTH
+  TEMP
+}
+
+enum TestType {
+  Finance
+  Romance
+  Crypto
+}
+
+enum AuthCodeType {
+  EMAIL
+  PHONE
+}
+
+enum RequestState {
+  REQUESTED
+  ACCEPTED
+  REJECTED
+  CANCELED
+  FINISHED
+}
+
+enum ReportType {
+  ScamPostComment
+  ScamDictionaryComment
+  Review
+}
+
+enum Provider {
+  GOOGLE
+  APPLE
+  EMAIL
+  NAVER
+  KAKAO
+}
+
+enum MsgType {
+  TEXT
+  IMAGE
+  VIDEO
+  FILE
+  REQUEST
+}
